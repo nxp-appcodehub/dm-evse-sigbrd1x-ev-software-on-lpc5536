@@ -1,6 +1,5 @@
 /*
  * Copyright 2022-2024 NXP
- * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -95,7 +94,7 @@ uint16_t durationBCBToggleinMS = 300;
 bool activatePilotSwitch = false;
 uint8_t bcbToggleStates = 0;
 kCPEVState oldCPEVState;
-
+volatile uint32_t g_TimerCurrentVal=0;
 /*******************************************************************************
  * Code
  ******************************************************************************/
@@ -214,6 +213,16 @@ void CP_GetResistor(kCPResistor cpResistor, kGPIOState *gpioState)
  */
 void CP_DetectPWM(void)
 {
+	g_TimerCurrentVal = CP_CTIMER->TC;
+	int32_t risingCaptureDifference = g_TimerCurrentVal - risingCaptureVal;
+	int32_t fallingCaptureDifference = g_TimerCurrentVal - fallingCaptureVal;
+
+	if((risingCaptureDifference > TIMER_THRESHOLD) || (fallingCaptureDifference > TIMER_THRESHOLD))
+	{
+		pwmOnPercent = 0;
+		pwmOnPercentMilli = 0;
+	}
+
 	if((pwmOnPercent < 0.5f) || (pwmOnPercent > 98.5f))
 	{
 		/* program in GPIO mode */
@@ -227,6 +236,8 @@ void CP_DetectPWM(void)
 		if (evDetPCGPIOVal == 1)
 		{
 			g_CPState = kCPStateHigh;
+			pwmOnPercent = 100;
+			pwmOnPercentMilli = pwmOnPercent * 10;
 		}
 		else
 		{
